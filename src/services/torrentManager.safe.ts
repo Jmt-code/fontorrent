@@ -19,7 +19,8 @@ export class TorrentManager {
 
   private async initWebTorrent() {
     try {
-      const WebTorrent = await import('webtorrent/dist/webtorrent.min.js');
+  // Importar el paquete con tipos en lugar del bundle UMD
+  const WebTorrent = await import('webtorrent');
       this.client = new (WebTorrent.default || WebTorrent)();
       this.setupEventListeners();
     } catch (error) {
@@ -38,7 +39,7 @@ export class TorrentManager {
         if (callback) callback(mockTorrent);
         return mockTorrent;
       },
-      seed: (files: any, callback?: any) => {
+  seed: (_files: any, callback?: any) => {
         console.warn('WebTorrent not available - using mock client');
         const mockTorrent = this.createMockTorrent('mock');
         if (callback) callback(mockTorrent);
@@ -270,7 +271,7 @@ export class TorrentManager {
   }
 
   async createTorrent(files: FileList): Promise<ArrayBuffer> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       try {
         if (!this.client) {
           resolve(new ArrayBuffer(1024));

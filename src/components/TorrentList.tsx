@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Download, Upload, Users, Trash2, FileDown } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
@@ -7,13 +8,16 @@ interface TorrentListProps {
   torrents: TorrentInfo[];
   onRemoveTorrent: (infoHash: string) => void;
   onDownloadFile: (infoHash: string, fileIndex: number) => void;
+  onSaveTorrent?: (infoHash: string) => void;
 }
 
 export const TorrentList: React.FC<TorrentListProps> = ({
   torrents,
   onRemoveTorrent,
-  onDownloadFile
+  onDownloadFile,
+  onSaveTorrent
 }) => {
+  const canSaveFS = typeof (window as any).showDirectoryPicker === 'function';
   const formatTime = (seconds: number) => {
     if (seconds === Infinity || seconds < 0) return '∞';
     const hours = Math.floor(seconds / 3600);
@@ -45,13 +49,29 @@ export const TorrentList: React.FC<TorrentListProps> = ({
                 {prettyBytes(torrent.length)} • {torrent.files.length} archivo(s)
               </p>
             </div>
-            <button
-              onClick={() => onRemoveTorrent(torrent.infoHash)}
-              className="text-red-500 hover:text-red-700 p-2"
-              title="Eliminar torrent"
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {onSaveTorrent && (
+                <button
+                  onClick={() => onSaveTorrent(torrent.infoHash)}
+                  disabled={!canSaveFS || torrent.files.length === 0}
+                  className={`px-3 py-1 border rounded text-xs ${(!canSaveFS || torrent.files.length === 0) ? 'text-gray-400 border-gray-200 cursor-not-allowed' : 'text-blue-600 hover:text-blue-800 border-blue-200'}`}
+                  title={
+                    !canSaveFS
+                      ? 'Tu navegador no soporta File System Access API'
+                      : (torrent.files.length === 0 ? 'Preparando archivos (cargando metadatos)...' : 'Guardar todos los archivos en una carpeta')
+                  }
+                >
+                  Guardar en carpeta
+                </button>
+              )}
+              <button
+                onClick={() => onRemoveTorrent(torrent.infoHash)}
+                className="text-red-500 hover:text-red-700 p-2"
+                title="Eliminar torrent"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Progress Bar */}
