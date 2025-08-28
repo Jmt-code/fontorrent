@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Cliente BitTorrent P2P que funciona completamente en el navegador. Descarga y comparte archivos torrent directamente desde la web." />
+    <meta name="keywords" content="torrent, bittorrent, p2p, webtorrent, descarga, compartir archivos" />
+    <meta property="og:title" content="FontTorrent - Cliente BitTorrent P2P Web" />
+    <meta property="og:description" content="Cliente BitTorrent que funciona en el navegador con soporte para WebRTC y conexiones P2P directas." />
+    <meta property="og:type" content="website" />
+    <title>FontTorrent - Cliente BitTorrent P2P Web</title>
+    
+    <!-- Buffer polyfill must be loaded first -->
+    <script>
+      // Immediate Buffer polyfill to prevent ReferenceError
+      (function() {
+        class BufferPolyfill extends Uint8Array {
+          constructor(data, encoding = 'utf8') {
+            if (typeof data === 'number') {
+              super(data);
+            } else if (typeof data === 'string') {
+              if (encoding === 'hex') {
+                const bytes = [];
+                for (let i = 0; i < data.length; i += 2) {
+                  bytes.push(parseInt(data.substr(i, 2), 16));
+                }
+                super(bytes);
+              } else {
+                const encoded = new TextEncoder().encode(data);
+                super(encoded);
+              }
+            } else if (data instanceof ArrayBuffer || data instanceof Uint8Array || Array.isArray(data)) {
+              super(data);
+            } else {
+              super(0);
+            }
+          }
+          
+          slice(start = 0, end = this.length) {
+            const sliced = Uint8Array.prototype.slice.call(this, start, end);
+            return new BufferPolyfill(sliced);
+          }
+          
+          toString(encoding = 'utf8') {
+            if (encoding === 'hex') {
+              return Array.from(this).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+            return new TextDecoder().decode(this);
+          }
+          
+          static from(data, encoding = 'utf8') {
+            return new BufferPolyfill(data, encoding);
+          }
+          
+          static alloc(size, fill = 0) {
+            const buf = new BufferPolyfill(size);
+            buf.fill(fill);
+            return buf;
+          }
+          
+          static allocUnsafe(size) {
+            return new BufferPolyfill(size);
+          }
+          
+          static isBuffer(obj) {
+            return obj instanceof BufferPolyfill || obj instanceof Uint8Array;
+          }
+          
+          static concat(list, totalLength) {
+            if (!Array.isArray(list)) return new BufferPolyfill(0);
+            
+            const length = totalLength !== undefined ? totalLength : list.reduce((acc, buf) => acc + buf.length, 0);
+            const result = new BufferPolyfill(length);
+            let offset = 0;
+            
+            for (const buf of list) {
+              if (offset >= length) break;
+              result.set(buf.slice(0, length - offset), offset);
+              offset += buf.length;
+            }
+            
+            return result;
+          }
+        }
+        
+        // Set Buffer globally before any modules load
+        window.Buffer = BufferPolyfill;
+        globalThis.Buffer = BufferPolyfill;
+        if (typeof global !== 'undefined') global.Buffer = BufferPolyfill;
+        
+        // Also add process.env for compatibility
+        window.process = window.process || {
+          env: { NODE_ENV: 'development' },
+          browser: true,
+          version: 'v16.0.0',
+          versions: { node: '16.0.0' }
+        };
+        globalThis.process = window.process;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
