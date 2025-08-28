@@ -5,6 +5,7 @@ import { PeerList } from './components/PeerList';
 import { TorrentManager } from './services/torrentManager';
 import type { TorrentInfo, PeerInfo } from './types/torrent';
 import { Download } from 'lucide-react';
+import { TrackersSettings } from './components/TrackersSettings';
 
 function App() {
   const [torrents, setTorrents] = useState<TorrentInfo[]>([]);
@@ -12,13 +13,16 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const torrentManagerRef = useRef<TorrentManager | null>(null);
+  const [trackers, setTrackers] = useState<string[]>([]);
+  const [saving, setSaving] = useState<{ active: boolean; percent: number; file?: string; } | null>(null);
 
   useEffect(() => {
     // Initialize TorrentManager
-    torrentManagerRef.current = new TorrentManager();
+  torrentManagerRef.current = new TorrentManager();
     
     torrentManagerRef.current.setOnTorrentUpdate(setTorrents);
     torrentManagerRef.current.setOnPeerUpdate(setPeers);
+  setTrackers(torrentManagerRef.current.getTrackers());
 
     return () => {
       if (torrentManagerRef.current) {
@@ -52,11 +56,11 @@ function App() {
     
     setIsLoading(true);
     try {
-      await torrentManagerRef.current.addTorrent(magnetUri);
-      showNotification('Torrent agregado desde enlace magnet');
+  await torrentManagerRef.current.addTorrent(magnetUri);
+  showNotification('Torrent agregado desde enlace magnet/URL');
     } catch (error) {
       console.error('Error adding magnet link:', error);
-      showNotification('Error al agregar el enlace magnet');
+  showNotification('Error al agregar el enlace');
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +104,34 @@ function App() {
     torrentManagerRef.current.downloadFile(infoHash, fileIndex);
   };
 
+  const handleSaveTorrent = async (infoHash: string) => {
+    if (!torrentManagerRef.current) return;
+    setSaving({ active: true, percent: 0 });
+    showNotification('Guardando archivos...');
+    const ok = await torrentManagerRef.current.saveTorrentToFolder(infoHash, ({ percent, file }) => {
+      setSaving({ active: true, percent, file });
+    });
+    setSaving({ active: false, percent: 100 });
+    if (ok) {
+      showNotification('Guardado completado');
+    } else {
+      showNotification('No se pudo guardar. Inténtalo de nuevo cuando el torrent esté listo.');
+    }
+  };
+
+  const handleSaveTrackers = (list: string[]) => {
+    if (!torrentManagerRef.current) return;
+    torrentManagerRef.current.setCustomTrackers(list);
+    setTrackers(torrentManagerRef.current.getTrackers());
+    showNotification('Trackers actualizados');
+  };
+
+  const handleForceAnnounce = () => {
+    if (!torrentManagerRef.current) return;
+    torrentManagerRef.current.forceAnnounce();
+    showNotification('Anuncio forzado a trackers');
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
@@ -131,6 +163,24 @@ function App() {
         </div>
       )}
 
+      {/* Saving Progress */}
+      {saving?.active && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+          <div className="bg-indigo-50 border border-indigo-200 text-indigo-800 px-4 py-3 rounded">
+            <div className="flex justify-between text-sm mb-1">
+              <span>Guardando en carpeta...</span>
+              <span>{saving.percent}%</span>
+            </div>
+            <div className="w-full bg-indigo-100 rounded h-2">
+              <div className="h-2 bg-indigo-500 rounded" style={{ width: `${saving.percent}%` }} />
+            </div>
+            {saving.file && (
+              <div className="text-xs mt-1 truncate">{saving.file}</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -157,6 +207,7 @@ function App() {
                 torrents={torrents}
                 onRemoveTorrent={handleRemoveTorrent}
                 onDownloadFile={handleDownloadFile}
+                onSaveTorrent={handleSaveTorrent}
               />
             </div>
           </div>
@@ -165,6 +216,12 @@ function App() {
           <div className="space-y-8">
             <PeerList peers={peers} />
             
+            <TrackersSettings
+              trackers={trackers}
+              onSave={handleSaveTrackers}
+              onForceAnnounce={handleForceAnnounce}
+            />
+
             {/* Stats */}
             <div className="bg-white rounded-lg shadow-md p-6 border">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">

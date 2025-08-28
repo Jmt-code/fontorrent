@@ -33,9 +33,8 @@ export default defineConfig({
   define: {
     global: 'globalThis',
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    // Ensure Buffer is available for all modules
-    'typeof Buffer': '"function"',
-    'Buffer': 'globalThis.Buffer',
+  // Buffer global lo aporta el polyfill/plugin; evitar claves inválidas en define
+  // (no usar 'typeof Buffer' en esbuild define)
   },
   resolve: {
     alias: {

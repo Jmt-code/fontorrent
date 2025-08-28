@@ -13,7 +13,7 @@ export const TorrentDropzone: React.FC<TorrentDropzoneProps> = ({
   onMagnetLink,
   onCreateTorrent
 }) => {
-  const [magnetLink, setMagnetLink] = React.useState('');
+  const [link, setLink] = React.useState('');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     acceptedFiles.forEach(file => {
@@ -32,11 +32,20 @@ export const TorrentDropzone: React.FC<TorrentDropzoneProps> = ({
 
   const handleMagnetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (magnetLink.startsWith('magnet:')) {
-      onMagnetLink(magnetLink);
-      setMagnetLink('');
-    }
+    onMagnetLink(link);
+    setLink('');
   };
+
+  const isValidLink = React.useMemo(() => {
+    if (!link) return false;
+    if (link.startsWith('magnet:')) return true;
+    try {
+      const u = new URL(link);
+      return (u.protocol === 'http:' || u.protocol === 'https:');
+    } catch {
+      return false;
+    }
+  }, [link]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -68,22 +77,22 @@ export const TorrentDropzone: React.FC<TorrentDropzoneProps> = ({
         </p>
       </div>
 
-      {/* Magnet Link Input */}
+      {/* Magnet/URL Input */}
       <div className="bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium text-gray-700 mb-4">
-          O pega un enlace magnet:
+          O pega un enlace magnet o URL .torrent:
         </h3>
         <form onSubmit={handleMagnetSubmit} className="flex gap-3">
           <input
             type="text"
-            value={magnetLink}
-            onChange={(e) => setMagnetLink(e.target.value)}
-            placeholder="magnet:?xt=urn:btih:..."
+            value={link}
+            onChange={(e) => setLink(e.target.value)}
+            placeholder="magnet:?xt=urn:btih:... o https://ejemplo.com/archivo.torrent"
             className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <button
             type="submit"
-            disabled={!magnetLink.startsWith('magnet:')}
+            disabled={!isValidLink}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             Añadir
